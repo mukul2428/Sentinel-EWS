@@ -576,3 +576,40 @@ a { color: var(--accent); text-decoration: none; &:hover { text-decoration: unde
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* MOBILE RESPONSIVE */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 16px; gap: 12px; height: 52px;
+    .nav-links { gap: 2px; a { padding: 6px 10px; font-size: 12px; } }
+    .user-name { display: none; }
+    .logout-btn { padding: 5px 8px; font-size: 11px; }
+  }
+  .main-content { padding: 16px; }
+  .page-header { flex-direction: column; gap: 8px; h2 { font-size: 20px; } }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .filter-tabs { flex-wrap: wrap; }
+  .borrower-table { .table-header { display: none; } .table-row { grid-template-columns: 1fr 80px 60px; gap: 8px; padding: 12px 14px; } .col-loan, .col-signal, .col-action, .col-arrow { display: none; } }
+  .two-col { grid-template-columns: 1fr; }
+  .tab-bar { flex-wrap: wrap; button { padding: 8px 12px; font-size: 12px; } }
+  .query-page .query-panel { grid-template-columns: 1fr; }
+  .portfolio-page .portfolio-stats { grid-template-columns: repeat(2, 1fr); }
+  .portfolio-page .priority-grid { grid-template-columns: 1fr; }
+  .login-container { width: 100%; padding: 0 16px; }
+  .detail-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .risk-hero { padding: 12px 16px; .risk-score-big { font-size: 32px; } }
+  .history-grid .history-row { grid-template-columns: 80px 80px 1fr 60px; font-size: 12px; }
+  .trend-row { grid-template-columns: 80px 1fr 60px; }
+  .score-bar-row { grid-template-columns: 120px 1fr 40px; }
+}
+
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .portfolio-stats { grid-template-columns: 1fr; }
+  .borrower-table .table-row { grid-template-columns: 1fr 60px 50px; }
+  .history-grid .history-row { grid-template-columns: 60px 70px 1fr 50px; }
+  .trend-row { grid-template-columns: 60px 1fr 50px; }
+  .score-bar-row { grid-template-columns: 100px 1fr 35px; }
+  .nav-brand .brand-text { font-size: 14px; letter-spacing: 1px; }
+}
