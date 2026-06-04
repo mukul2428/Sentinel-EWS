@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: sentinel-ews-backend
+    runtime: node
+    plan: free
+    rootDirectory: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: LLM_API_TOKEN
+        sync: false
