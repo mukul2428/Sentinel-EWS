@@ -3,7 +3,6 @@ services:
     name: sentinel-ews-backend
     runtime: node
     plan: free
-    rootDirectory: backend
     buildCommand: npm install
     startCommand: node src/index.js
     envVars:
