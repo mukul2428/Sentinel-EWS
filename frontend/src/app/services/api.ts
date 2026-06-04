@@ -2,8 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of, shareReplay } from 'rxjs';
 import { AuthService } from './auth';
+import { environment } from '../../environments/environment';
 
-const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = environment.apiUrl;
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
