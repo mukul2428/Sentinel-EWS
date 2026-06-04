@@ -47,6 +47,37 @@ a { color: var(--accent); text-decoration: none; &:hover { text-decoration: unde
 
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 
+/* HAMBURGER */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--text2);
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  span.open {
+    &:first-child { transform: rotate(45deg) translate(5px, 5px); }
+    &:nth-child(2) { opacity: 0; }
+    &:last-child { transform: rotate(-45deg) translate(5px, -5px); }
+  }
+}
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 98;
+}
+
 /* NAVBAR */
 .navbar {
   display: flex; align-items: center; gap: 32px;
