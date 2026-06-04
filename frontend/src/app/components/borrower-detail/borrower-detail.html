@@ -1,0 +1,213 @@
+<div class="detail-page">
+  <div class="back-bar">
+    <a routerLink="/dashboard" class="back-link">← Back to Dashboard</a>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div><span>Loading...</span>
+  </div>
+  <div class="error-state" *ngIf="error">⚠️ {{ error }}</div>
+
+  <ng-container *ngIf="!loading && borrowerData">
+    <!-- Header -->
+    <div class="detail-header">
+      <div class="borrower-meta">
+        <h2>{{ borrowerData.name }}</h2>
+        <span class="bid">{{ borrowerData.id }}</span>
+      </div>
+      <div class="risk-hero" [ngClass]="getCategoryClass(riskData.riskCategory)">
+        <div class="risk-score-big">{{ riskData.riskScore }}</div>
+        <div class="risk-label">{{ riskData.riskCategoryLabel }}</div>
+      </div>
+    </div>
+
+    <!-- Data quality warning -->
+    <div class="dq-warn" *ngIf="riskData.dataQualityFlag?.flag">
+      ⚠️ {{ riskData.dataQualityFlag.message }}
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button [class.active]="activeTab==='overview'" (click)="activeTab='overview'">Overview</button>
+      <button [class.active]="activeTab==='history'" (click)="activeTab='history'">Payment History</button>
+      <button [class.active]="activeTab==='signals'" (click)="activeTab='signals'">Risk Signals</button>
+      <button [class.active]="activeTab==='alert'" (click)="loadAlert()">
+        AI Alert <span class="ai-badge">AI</span>
+      </button>
+      <button [class.active]="activeTab==='query'" (click)="activeTab='query'" *ngIf="auth.isAnalyst()">
+        Query <span class="ai-badge">AI</span>
+      </button>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div class="tab-content" *ngIf="activeTab==='overview'">
+      <div class="two-col">
+        <div class="info-card">
+          <h4>Loan Details</h4>
+          <div class="info-row"><span>Type</span><span>{{ borrowerData.loan.loanType }}</span></div>
+          <div class="info-row"><span>Amount</span><span>₹{{ borrowerData.loan.amount | number }}</span></div>
+          <div class="info-row"><span>EMI</span><span>₹{{ borrowerData.loan.emiAmount | number }}</span></div>
+          <div class="info-row"><span>Outstanding</span><span>₹{{ borrowerData.loan.outstandingBalance | number }}</span></div>
+          <div class="info-row"><span>Interest Rate</span><span>{{ borrowerData.loan.interestRate }}%</span></div>
+          <div class="info-row"><span>Next Due</span><span>{{ borrowerData.loan.nextDueDate }}</span></div>
+        </div>
+        <div class="info-card">
+          <h4>Account Signals</h4>
+          <div class="info-row"><span>Current DPD</span><span [class.red]="borrowerData.accountSignals.currentDPD>0">{{ borrowerData.accountSignals.currentDPD }} days</span></div>
+          <div class="info-row"><span>Max DPD (90d)</span><span [class.red]="borrowerData.accountSignals.maxDPDLast90Days>7">{{ borrowerData.accountSignals.maxDPDLast90Days }} days</span></div>
+          <div class="info-row"><span>Failed Debits</span><span [class.red]="borrowerData.accountSignals.failedAutoDebits>1">{{ borrowerData.accountSignals.failedAutoDebits }}</span></div>
+          <div class="info-row"><span>Credit Utilization</span><span [class.red]="borrowerData.accountSignals.creditUtilization>60">{{ borrowerData.accountSignals.creditUtilization }}%</span></div>
+          <div class="info-row"><span>Last Month Inflow</span><span>₹{{ borrowerData.accountSignals.lastMonthInflow | number }}</span></div>
+          <div class="info-row"><span>Inflow Drop</span><span [class.red]="borrowerData.accountSignals.inflowDropPercent>15">{{ borrowerData.accountSignals.inflowDropPercent }}%</span></div>
+          <div class="info-row"><span>Active Loans</span><span [class.red]="borrowerData.accountSignals.activeLoans>2">{{ borrowerData.accountSignals.activeLoans }}</span></div>
+        </div>
+      </div>
+
+      <!-- Recommended Action -->
+      <div class="action-card" [ngClass]="'urg-' + riskData.recommendedAction.urgency?.toLowerCase()">
+        <div class="action-header">
+          <span class="action-title">Recommended Action</span>
+          <span class="urgency-tag">{{ riskData.recommendedAction.urgency }}</span>
+        </div>
+        <div class="action-name">{{ riskData.recommendedAction.label }}</div>
+        <div class="action-desc">{{ riskData.recommendedAction.description }}</div>
+      </div>
+
+      <!-- Scenario Simulation -->
+      <div class="scenario-card">
+        <div class="scenario-label">📊 Scenario: If next EMI is missed</div>
+        <div class="scenario-body">
+          Score would rise from <strong>{{ riskData.riskScore }}</strong> to
+          <strong>{{ riskData.scenario.projectedScore }}</strong> →
+          <span class="cat-badge" [ngClass]="getCategoryClass(riskData.scenario.projectedCategory)">
+            {{ riskData.scenario.projectedCategoryLabel }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENT HISTORY TAB -->
+    <div class="tab-content" *ngIf="activeTab==='history'">
+      <h4>Repayment History</h4>
+      <div class="history-grid">
+        <div class="history-row header-row">
+          <span>Month</span><span>Status</span><span>Days Delayed</span><span>Amount Paid</span><span>EMI</span>
+        </div>
+        <div class="history-row" *ngFor="let h of borrowerData.repaymentHistory">
+          <span>{{ h.month }}</span>
+          <span class="status-badge" [ngClass]="getStatusClass(h.status)">{{ h.status }}</span>
+          <span [class.red]="h.daysDelayed > 0">{{ h.daysDelayed > 0 ? h.daysDelayed + 'd' : '—' }}</span>
+          <span>₹{{ h.amount | number }}</span>
+          <span class="emi-diff" [class.partial]="h.amount < borrowerData.loan.emiAmount && h.status !== 'MISSED'">
+            {{ h.amount < borrowerData.loan.emiAmount && h.status !== 'MISSED' ? 'PARTIAL' : '' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Risk Trend Visualization -->
+      <div class="trend-card">
+        <div class="trend-header">
+          <span class="trend-title">📈 Repayment Trend (Last 6 Months)</span>
+          <span class="trend-sub">DPD days & payment status</span>
+        </div>
+        <div class="trend-chart">
+          <div class="trend-row" *ngFor="let h of borrowerData.repaymentHistory">
+            <span class="trend-month">{{ h.month }}</span>
+            <div class="trend-bar-wrap">
+              <div class="trend-bar" [ngClass]="getStatusClass(h.status)"
+                   [style.width.%]="getTrendWidth(h.daysDelayed)">
+                <span class="trend-val">{{ h.daysDelayed > 0 ? h.daysDelayed + 'd' : 'On time' }}</span>
+              </div>
+            </div>
+            <span class="trend-status" [class.red]="h.daysDelayed > 7">{{ h.status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <h4 class="mt-24">Recent Transactions</h4>
+      <div class="tx-list">
+        <div class="tx-row" *ngFor="let t of borrowerData.transactions">
+          <span class="tx-type" [ngClass]="getTransactionClass(t.type)">{{ t.type }}</span>
+          <span class="tx-date">{{ t.date }}</span>
+          <span class="tx-desc">{{ t.description }}</span>
+          <span class="tx-amount" [ngClass]="getTransactionClass(t.type)">
+            {{ t.type === 'CREDIT' ? '+' : t.type === 'FAILED' ? '' : '-' }}₹{{ t.amount | number }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RISK SIGNALS TAB -->
+    <div class="tab-content" *ngIf="activeTab==='signals'">
+      <h4>Risk Signal Breakdown</h4>
+      <div class="score-bars">
+        <div class="score-bar-row" *ngFor="let item of scoreBreakdownItems">
+          <div class="bar-label">{{ item.label }}</div>
+          <div class="bar-track">
+            <div class="bar-fill" [style.width.%]="(item.value / item.max) * 100" [class.bar-full]="item.value >= item.max"></div>
+          </div>
+          <div class="bar-val">{{ item.value }}/{{ item.max }}</div>
+        </div>
+      </div>
+
+      <h4 class="mt-24">Flagged Signals</h4>
+      <div class="reason-list">
+        <div class="reason-card" *ngFor="let r of riskData.reasons" [ngClass]="getSeverityClass(r.severity)">
+          <div class="reason-header">
+            <span class="reason-label">{{ r.label }}</span>
+            <span class="sev-badge" [ngClass]="getSeverityClass(r.severity)">{{ r.severity }}</span>
+          </div>
+          <div class="reason-detail">{{ r.detail }}</div>
+        </div>
+        <div class="no-reasons" *ngIf="riskData.reasons.length === 0">No risk signals flagged.</div>
+      </div>
+    </div>
+
+    <!-- AI ALERT TAB -->
+    <div class="tab-content" *ngIf="activeTab==='alert'">
+      <div class="ai-loading" *ngIf="alertLoading">
+        <div class="spinner"></div><span>Generating AI explanation...</span>
+      </div>
+      <ng-container *ngIf="alertData && !alertLoading">
+        <div class="ai-explanation-card">
+          <div class="ai-header">
+            <span class="ai-icon">🤖</span>
+            <span class="ai-title">AI Risk Explanation</span>
+            <span class="ai-tag">Grounded · Data-only</span>
+          </div>
+          <div class="ai-body" *ngIf="alertData.llmExplanation" [innerHTML]="alertData.llmExplanation | markdown"></div>
+          <div class="ai-error" *ngIf="alertData.llmError">⚠️ {{ alertData.llmError }}</div>
+          <div class="ai-footer">Generated at {{ alertData.generatedAt | date:'medium' }}</div>
+        </div>
+        <div class="grounding-note">
+          ℹ️ This explanation is generated strictly from this borrower's data. The AI is instructed not to infer, speculate, or add information beyond what is on record.
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- QUERY TAB -->
+    <div class="tab-content" *ngIf="activeTab==='query' && auth.isAnalyst()">
+      <h4>Ask About This Borrower</h4>
+      <div class="query-box">
+        <input type="text" [(ngModel)]="question" placeholder="e.g. Why was this borrower flagged? What are the payment trends?"
+          (keydown.enter)="submitQuery()" class="query-input" />
+        <button (click)="submitQuery()" [disabled]="queryLoading || !question.trim()" class="query-btn">
+          {{ queryLoading ? 'Thinking...' : 'Ask AI' }}
+        </button>
+      </div>
+      <div class="suggested-queries">
+        <span>Try: </span>
+        <button (click)="question='Why was this borrower flagged?'" class="sug-btn">Why flagged?</button>
+        <button (click)="question='What is the payment trend for the last 3 months?'" class="sug-btn">Payment trend?</button>
+        <button (click)="question='What is the recommended action and why?'" class="sug-btn">Recommended action?</button>
+      </div>
+      <div class="query-result" *ngIf="queryResult">
+        <div class="qr-question">Q: {{ queryResult.question }}</div>
+          <div class="qr-answer" [innerHTML]="queryResult.answer | markdown"></div>
+        <div class="qr-footer">
+          Data source: {{ queryResult.dataSource }} · {{ queryResult.queriedAt | date:'shortTime' }}
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

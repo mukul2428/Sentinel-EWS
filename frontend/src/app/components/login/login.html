@@ -1,0 +1,29 @@
+<div class="login-page">
+  <div class="login-container">
+    <div class="login-header">
+      <div class="logo-mark">⬡</div>
+      <h1>SENTINEL <span>EWS</span></h1>
+      <p>Early Warning System — Loan Default Risk</p>
+    </div>
+
+    <div class="demo-notice">
+      <span class="notice-icon">🔐</span>
+      <span>Demo environment — select a role to continue</span>
+    </div>
+
+    <div class="user-grid">
+      <div class="user-card" *ngFor="let user of demoUsers" (click)="login(user)">
+        <div class="user-icon">{{ getRoleIcon(user.role) }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ user.name }}</div>
+          <div class="user-role" [ngClass]="user.role">{{ user.role | titlecase }}</div>
+        </div>
+        <div class="user-arrow">→</div>
+      </div>
+    </div>
+
+    <div class="rbac-note">
+      <strong>RBAC Demo:</strong> Analysts see only assigned borrowers · Managers see all · Borrowers see only their own data
+    </div>
+  </div>
+</div>

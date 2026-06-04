@@ -1,0 +1,82 @@
+<div class="portfolio-page">
+  <div class="page-header">
+    <h2>Portfolio Risk Summary</h2>
+    <p class="sub">Aggregate risk posture across all accessible borrowers</p>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div><span>Generating portfolio analysis...</span>
+  </div>
+  <div class="error-state" *ngIf="error">⚠️ {{ error }}</div>
+
+  <ng-container *ngIf="data && !loading">
+    <!-- Portfolio Stats -->
+    <div class="portfolio-stats">
+      <div class="pstat">
+        <div class="pstat-num">{{ data.breakdown.total }}</div>
+        <div class="pstat-label">Total Borrowers</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-num">₹{{ (data.breakdown.totalOutstanding / 100000).toFixed(1) }}L</div>
+        <div class="pstat-label">Total Outstanding</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-num">{{ data.breakdown.averageScore }}</div>
+        <div class="pstat-label">Avg Risk Score</div>
+      </div>
+      <div class="pstat urgent">
+        <div class="pstat-num">{{ data.breakdown.critical.length + data.breakdown.highRisk.length }}</div>
+        <div class="pstat-label">Need Action</div>
+      </div>
+    </div>
+
+    <!-- Risk Distribution -->
+    <div class="distribution-card">
+      <h4>Risk Distribution</h4>
+      <div class="dist-bar-track">
+        <div *ngFor="let d of riskDistribution"
+          class="dist-segment" [ngClass]="d.cls"
+          [style.width.%]="d.pct"
+          [title]="d.label + ': ' + d.count">
+        </div>
+      </div>
+      <div class="dist-legend">
+        <div class="legend-item" *ngFor="let d of riskDistribution">
+          <span class="legend-dot" [ngClass]="d.cls"></span>
+          <span>{{ d.label }} ({{ d.count }})</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Priority Lists -->
+    <div class="priority-grid">
+      <div class="priority-card critical-card" *ngIf="data.breakdown.critical.length">
+        <h4>⚠️ Critical — Immediate Action</h4>
+        <div class="priority-item" *ngFor="let b of data.breakdown.critical">
+          <a [routerLink]="['/borrower', b.id]">{{ b.id }}</a>
+          <span>{{ b.name }}</span>
+          <span class="p-score">{{ b.score }}</span>
+        </div>
+      </div>
+      <div class="priority-card high-card" *ngIf="data.breakdown.highRisk.length">
+        <h4>🔴 High Risk — Outreach Required</h4>
+        <div class="priority-item" *ngFor="let b of data.breakdown.highRisk">
+          <a [routerLink]="['/borrower', b.id]">{{ b.id }}</a>
+          <span>{{ b.name }}</span>
+          <span class="p-score">{{ b.score }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- LLM Executive Summary -->
+    <div class="ai-summary-card">
+      <div class="ai-header">
+        <span class="ai-icon">🤖</span>
+        <span class="ai-title">AI Portfolio Analysis</span>
+        <span class="ai-tag">Manager Summary</span>
+      </div>
+      <div class="ai-body" *ngIf="data.llmSummary" [innerHTML]="data.llmSummary | markdown"></div>
+      <div class="ai-error" *ngIf="data.llmError">⚠️ {{ data.llmError }}</div>
+    </div>
+  </ng-container>
+</div>

@@ -1,0 +1,98 @@
+<div class="dashboard-page">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>Risk Dashboard</h2>
+      <p class="sub">Borrowers sorted by risk severity · as of today</p>
+    </div>
+    <div class="header-right" *ngIf="!loading">
+      <span class="total-badge">{{ borrowers.length }} borrowers</span>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row" *ngIf="!loading">
+    <div class="stat-card critical" (click)="filterCategory='CRITICAL'">
+      <div class="stat-num">{{ stats.critical }}</div>
+      <div class="stat-label">Critical</div>
+    </div>
+    <div class="stat-card high" (click)="filterCategory='HIGH_RISK'">
+      <div class="stat-num">{{ stats.highRisk }}</div>
+      <div class="stat-label">High Risk</div>
+    </div>
+    <div class="stat-card watch" (click)="filterCategory='WATCHLIST'">
+      <div class="stat-num">{{ stats.watchlist }}</div>
+      <div class="stat-label">Watchlist</div>
+    </div>
+    <div class="stat-card low" (click)="filterCategory='LOW'">
+      <div class="stat-num">{{ stats.low }}</div>
+      <div class="stat-label">Low Risk</div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="filter-tabs" *ngIf="!loading">
+    <button *ngFor="let cat of categories"
+      [class.active]="filterCategory === cat"
+      (click)="filterCategory = cat">
+      {{ cat === 'ALL' ? 'All' : cat === 'HIGH_RISK' ? 'High Risk' : (cat | titlecase) }}
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <span>Loading borrower risk data...</span>
+  </div>
+
+  <!-- Error -->
+  <div class="error-state" *ngIf="error">
+    <span>⚠️ {{ error }}</span>
+  </div>
+
+  <!-- Borrower Table -->
+  <div class="borrower-table" *ngIf="!loading && !error">
+    <div class="table-header">
+      <span>Borrower</span>
+      <span>Loan Details</span>
+      <span>Risk Score</span>
+      <span>Category</span>
+      <span>Top Signal</span>
+      <span>Action</span>
+      <span></span>
+    </div>
+
+    <div class="table-row" *ngFor="let b of filtered" [routerLink]="['/borrower', b.borrowerId]">
+      <div class="col-borrower">
+        <div class="b-name">{{ b.borrowerName }}</div>
+        <div class="b-id">{{ b.borrowerId }}</div>
+      </div>
+      <div class="col-loan">
+        <div class="loan-type">{{ b.loan?.loanType }}</div>
+        <div class="loan-emi">EMI ₹{{ b.loan?.emiAmount | number }}</div>
+      </div>
+      <div class="col-score">
+        <div class="score-ring" [ngClass]="getCategoryClass(b.riskCategory)">
+          {{ b.riskScore }}
+        </div>
+      </div>
+      <div class="col-category">
+        <span class="cat-badge" [ngClass]="getCategoryClass(b.riskCategory)">
+          {{ b.riskCategoryLabel }}
+        </span>
+      </div>
+      <div class="col-signal">
+        <span class="signal-text">{{ b.reasons[0]?.label || '—' }}</span>
+        <span class="signal-detail">{{ b.reasons[0]?.detail || '' }}</span>
+      </div>
+      <div class="col-action">
+        <span class="urgency-dot" [ngClass]="getUrgencyClass(b.recommendedAction?.urgency)"></span>
+        <span class="action-label">{{ b.recommendedAction?.label }}</span>
+      </div>
+      <div class="col-arrow">→</div>
+    </div>
+
+    <div class="empty-state" *ngIf="filtered.length === 0">
+      No borrowers in this category.
+    </div>
+  </div>
+</div>

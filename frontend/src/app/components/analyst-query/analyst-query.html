@@ -1,0 +1,59 @@
+<div class="query-page">
+  <div class="page-header">
+    <h2>Analyst Query Console</h2>
+    <p class="sub">Ask questions about any borrower — answers grounded strictly in on-record data</p>
+  </div>
+
+  <div class="query-panel">
+    <div class="query-form">
+      <div class="form-row">
+        <label>Borrower ID</label>
+        <select [(ngModel)]="borrowerId" class="select-input">
+          <option value="">Select borrower</option>
+          <option *ngFor="let b of borrowers" [value]="b.id">{{ b.id }} — {{ b.name }}</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Question</label>
+        <input type="text" [(ngModel)]="question" placeholder="Ask anything about this borrower..."
+          (keydown.enter)="submit()" class="query-input" />
+      </div>
+      <button (click)="submit()" [disabled]="loading || !borrowerId || !question.trim()" class="submit-btn">
+        {{ loading ? 'Processing...' : 'Submit Query' }}
+      </button>
+    </div>
+
+    <div class="suggestions">
+      <div class="sug-title">Suggested Queries</div>
+      <button class="sug-chip" (click)="setQuestion('Why was this borrower flagged?')">Why was this borrower flagged?</button>
+      <button class="sug-chip" (click)="setQuestion('What is the payment trend in the last 3 months?')">Payment trend last 3 months?</button>
+      <button class="sug-chip" (click)="setQuestion('What is the income situation of this borrower?')">Income situation?</button>
+      <button class="sug-chip" (click)="setQuestion('What action is recommended and why?')">Recommended action?</button>
+      <button class="sug-chip" (click)="setQuestion('How many failed auto-debits has this borrower had?')">Failed auto-debits?</button>
+    </div>
+  </div>
+
+  <div class="error-state" *ngIf="error">⚠️ {{ error }}</div>
+
+  <!-- Current Result -->
+  <div class="result-card" *ngIf="result">
+    <div class="result-meta">
+      <span class="res-id">{{ result.borrowerId }}</span>
+      <span class="res-src">{{ result.dataSource }}</span>
+      <span class="res-time">{{ result.queriedAt | date:'shortTime' }}</span>
+    </div>
+    <div class="res-question">Q: {{ result.question }}</div>
+    <div class="res-answer" [innerHTML]="result.answer | markdown"></div>
+    <div class="res-error" *ngIf="result.error">⚠️ {{ result.error }}</div>
+  </div>
+
+  <!-- Query History -->
+  <div class="history-section" *ngIf="history.length > 1">
+    <h4>Previous Queries</h4>
+    <div class="history-item" *ngFor="let h of history.slice(1)">
+      <div class="hi-meta">{{ h.borrowerId }} · {{ h.queriedAt | date:'shortTime' }}</div>
+      <div class="hi-q">{{ h.question }}</div>
+      <div class="hi-a">{{ h.answer }}</div>
+    </div>
+  </div>
+</div>
