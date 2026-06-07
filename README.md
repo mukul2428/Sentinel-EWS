@@ -2,9 +2,11 @@
 
 ## Overview
 
-Sentinel EWS is an early warning system that identifies borrowers likely to become delinquent within the next 30 days. It combines repayment history, cash-flow behavior, and account signals to generate risk alerts with explanations and recommended actions.
+Sentinel EWS is an early warning system that identifies borrowers likely to become delinquent within the next 30 days. It combines repayment history, cash-flow behavior, and account signals to generate risk scores — and uses AI to derive all analyst-facing insights: top risk signals, recommended actions, and flagged indicators.
 
-**Stack:** Angular 21 (frontend) + Node.js/Express (backend) + LLM wrapper (AI explanations)
+**Stack:** Angular 21 (frontend) · Node.js/Express (backend) · LLM API (AI insights)
+
+**AI design principle:** Rule-based scoring is used only for internal risk categorization. All signals, actions, and explanations shown in the UI are generated on-demand by the LLM from raw borrower data — never from hardcoded labels.
 
 ---
 
@@ -15,7 +17,7 @@ Sentinel EWS is an early warning system that identifies borrowers likely to beco
 ```bash
 cd backend
 npm install
-export LLM_API_TOKEN=your_token_here
+export LLM_API_TOKEN=your_llm_api_key
 node src/index.js
 # Runs on http://localhost:3000
 ```
@@ -41,61 +43,73 @@ Angular Frontend (port 4200)
         ▼
 Node.js / Express Backend (port 3000)
         │
-        ├── /api/borrowers         → Risk-scored borrower list
-        ├── /api/borrowers/:id     → Borrower detail + signals
-        ├── /api/borrowers/:id/alert → LLM-generated explanation
-        ├── /api/query             → Analyst NL query (LLM)
-        └── /api/portfolio/summary → Portfolio-level analysis
+        ├── GET  /api/borrowers              → Risk-scored borrower list (reasons/action stripped)
+        ├── GET  /api/borrowers/:id          → Borrower detail + raw signals
+        ├── GET  /api/borrowers/:id/signal   → LLM top signal + action (dashboard, on-demand)
+        ├── GET  /api/borrowers/:id/ai-insight → LLM recommended action + flagged signals
+        ├── GET  /api/borrowers/:id/alert    → LLM full markdown explanation (AI Alert tab)
+        ├── POST /api/query                  → Analyst natural-language query (LLM)
+        └── GET  /api/portfolio/summary      → Portfolio analytics + LLM summary
                 │
                 ▼
-        LLM Wrapper API (external)
-        https://llm-wrapper-741152993481.asia-south1.run.app
+        LLM API (external)
 ```
 
 ---
 
 ## Sample Data Schema
 
+Each borrower record contains raw financial signals. The LLM derives insights from these — nothing is pre-labelled.
+
 ```json
 {
-  "id": "B001",
-  "name": "Arjun Sharma",
+  "id": "B005",
+  "name": "Deepak Nair",
   "assignedAnalyst": "analyst1",
   "loan": {
-    "id": "L001",
-    "amount": 500000,
-    "emiAmount": 12500,
-    "interestRate": 12.5,
-    "tenure": 48,
-    "disbursedDate": "2023-06-01",
-    "nextDueDate": "2024-06-15",
-    "outstandingBalance": 420000,
-    "loanType": "Personal"
+    "id": "L005",
+    "amount": 1000000,
+    "emiAmount": 22000,
+    "interestRate": 10.5,
+    "tenure": 60,
+    "disbursedDate": "2022-08-01",
+    "nextDueDate": "2024-06-08",
+    "outstandingBalance": 820000,
+    "loanType": "Business"
   },
   "repaymentHistory": [
-    { "month": "2024-05", "status": "PAID", "daysDelayed": 0, "amount": 12500 },
-    { "month": "2024-04", "status": "PARTIAL", "daysDelayed": 12, "amount": 8000 },
-    { "month": "2024-01", "status": "MISSED", "daysDelayed": 30, "amount": 0 }
+    { "month": "2024-05", "status": "MISSED", "daysDelayed": 42, "amount": 0 },
+    { "month": "2024-04", "status": "MISSED", "daysDelayed": 38, "amount": 0 },
+    { "month": "2024-03", "status": "PARTIAL", "daysDelayed": 20, "amount": 12000 }
   ],
   "accountSignals": {
-    "failedAutoDebits": 3,
-    "creditUtilization": 82,
-    "avgMonthlyInflow": 35000,
-    "lastMonthInflow": 22000,
-    "inflowDropPercent": 37,
-    "activeLoans": 2,
-    "currentDPD": 0,
-    "maxDPDLast90Days": 30
+    "failedAutoDebits": 7,
+    "creditUtilization": 96,
+    "monthlyInflows": [
+      { "month": "2024-05", "inflow": 18000 },
+      { "month": "2024-04", "inflow": 25000 },
+      { "month": "2024-03", "inflow": 90000 },
+      { "month": "2024-02", "inflow": 90000 },
+      { "month": "2024-01", "inflow": 88000 },
+      { "month": "2023-12", "inflow": 92000 }
+    ],
+    "activeLoans": 4,
+    "currentDPD": 42,
+    "maxDPDLast90Days": 42
   },
   "transactions": [
-    { "date": "2024-05-15", "type": "FAILED", "amount": 12500, "description": "EMI Auto-debit Failed" }
+    { "date": "2024-05-15", "type": "FAILED", "amount": 22000, "description": "EMI Auto-debit Failed" }
   ]
 }
 ```
 
+> `monthlyInflows` is the key income signal. The LLM reads this array and derives the income trend itself — no pre-computed drop percentage is passed.
+
 ---
 
 ## Risk Scoring Logic
+
+The rule-based scorer (`riskScorer.js`) runs internally to produce a numeric risk score and category. Its output is used for sorting and categorization only — `reasons` and `recommendedAction` from the scorer are **not** sent to the frontend.
 
 ### Signals & Weights
 
@@ -107,72 +121,74 @@ Node.js / Express Backend (port 3000)
 | Credit Utilization | 15 | Utilization % across credit lines |
 | Payment Behavior | 15 | Missed/partial payment pattern (last 3 months) |
 
-### Thresholds
+### Score Thresholds
 
-**DPD Scoring:**
-- 0 days → 0 pts
-- 7–14 days → 9 pts (30%)
-- 15–29 days → 18 pts (60%)
-- 30–44 days → 25.5 pts (85%)
-- 45+ days → 30 pts (100%)
-
-**Failed Auto-Debits:**
-- 0 → 0 pts
-- 1 → 6 pts (30%)
-- 3 → 13 pts (65%)
-- 5+ → 20 pts (100%)
-
-**Income Inflow Drop:**
-- 0–15% → 0 pts
-- 15–29% → 6 pts (30%)
-- 30–49% → 13 pts (65%)
-- 50%+ → 20 pts (100%)
-
-**Credit Utilization:**
-- 0–40% → 0 pts
-- 40–60% → 3.75 pts (25%)
-- 60–80% → 9 pts (60%)
-- 80%+ → 15 pts (100%)
-
-**Category Thresholds:**
-- 0–24 → Low
-- 25–49 → Watchlist
-- 50–74 → High Risk
-- 75–100 → Critical
-
-### Recommended Actions by Category
-
-| Category | Action | Urgency |
-|---|---|---|
-| Critical (DPD + income drop) | Restructuring Review | Immediate |
-| Critical | Proactive Collections Call | Immediate |
-| High Risk | Payment Plan Offer | High |
-| Watchlist (failed debits ≥ 2) | Proactive Call | Medium |
-| Watchlist | Soft Reminder | Low |
-| Low | Routine Monitoring | None |
+| Range | Category |
+|---|---|
+| 0–24 | Low |
+| 25–49 | Watchlist |
+| 50–74 | High Risk |
+| 75–100 | Critical |
 
 ---
 
-## LLM Integration & Grounding Safeguards
+## LLM Integration
 
-All LLM calls are strictly grounded:
+All analyst-facing insights are generated on-demand by the configured LLM API. The API key is injected via the `LLM_API_TOKEN` environment variable — never hardcoded.
 
-1. **Explanation generation:** Borrower data is passed verbatim in the prompt. The LLM is instructed it MUST NOT infer, speculate, or add information beyond what is provided.
+### Three AI endpoints
 
-2. **Analyst queries:** Each query only passes the specific borrower's data — no cross-borrower context leakage.
+| Endpoint | Trigger | Returns |
+|---|---|---|
+| `GET /borrowers/:id/signal` | Dashboard refresh button (per row) | `{ signal, action, aiGenerated }` — concise top signal + 3–5 word action |
+| `GET /borrowers/:id/ai-insight` | Borrower detail page load | `{ recommendedAction: { label, description, urgency }, flaggedSignals: [{ label, detail, severity }] }` |
+| `GET /borrowers/:id/alert` | AI Alert tab click | Full markdown explanation (3–4 paragraphs) |
 
-3. **Portfolio summary:** Aggregated scores are passed; no individual borrower PII included.
+### Grounding safeguards
 
-**Prompt grounding constraint (applied to all calls):**
-> "You MUST use ONLY the data provided below. Do NOT infer, speculate, or add any information not present in this data. If data is missing or unclear, say so explicitly."
+All prompts include:
+> "You MUST use ONLY the data provided below. Do NOT infer, speculate, or add any information not present in this data."
+
+- **Monthly income data** is passed as a raw array (`monthlyInflows`) — the LLM observes the trend itself rather than being told "income dropped 80%."
+- **No pre-computed labels** (`reasons`, `recommendedAction` from the scorer) are passed to any LLM prompt.
+- **Analyst queries** only pass the specific borrower's data — no cross-borrower context leakage.
+
+---
+
+## Frontend Caching
+
+All AI-generated data is cached in the singleton `ApiService` and survives route navigation:
+
+| Cache | Type | Key |
+|---|---|---|
+| `borrowersCache$` | `Observable` with `shareReplay(1)` | shared — one HTTP call per session |
+| `signalCache` | `Record<borrowerId, {signal, action}>` | per borrower |
+| `aiInsightCache` | `Record<borrowerId, insight>` | per borrower |
+| `alertCache` | `Record<borrowerId, alertData>` | per borrower |
+
+Call `invalidateBorrowersCache()` or `invalidatePortfolioCache()` on logout to force a fresh fetch.
+
+---
+
+## UI Behavior
+
+### Dashboard (Signal & Action columns)
+
+| State | Signal column | Action column |
+|---|---|---|
+| Not yet generated | `✦ AI signal` (muted placeholder) | `↻ get AI signal & action` (muted hint) |
+| Loading | `Analyzing...` (pulsing) | CSS spinner |
+| AI generated | Signal text + `✦ AI` chip | Amber action text |
+
+Click the `↻` refresh button on any row to trigger the LLM call for that borrower. Result is cached — refreshing or navigating back does not re-call the API.
+
+### Borrower Detail (Recommended Action & Flagged Signals)
+
+Both sections show an "AI generate" hint on first visit, a spinner while loading, then the AI output. Data is cached once retrieved. A per-section refresh button forces a new LLM call.
 
 ---
 
 ## RBAC Design
-
-### Prototype (simulated)
-
-Tokens map directly to users in `backend/src/data/users.js`. Role is embedded in the user record.
 
 ### Demo Tokens
 
@@ -186,19 +202,48 @@ Tokens map directly to users in `backend/src/data/users.js`. Role is embedded in
 
 ### Production RBAC Design
 
-In a real implementation:
+1. **Authentication:** JWT tokens (RS256, short expiry) with `userId`, `role`, and `assignedBorrowers[]` claims.
+2. **Row-level security:** Analyst's assigned borrowers enforced at DB query layer, not just API layer.
+3. **Borrower access:** Restricted token with read-only access to own record; internal scores and analyst notes are not exposed.
+4. **Audit logging:** Every data access logged with `userId`, `borrowerId`, `endpoint`, `timestamp`.
+5. **LLM calls:** Backend injects borrower data into prompts; the frontend never calls the LLM directly.
 
-1. **Authentication:** JWT tokens (RS256, short expiry) issued at login by an auth service. Tokens carry `userId`, `role`, and `assignedBorrowers[]` claims.
+---
 
-2. **Row-level security:** Analyst's assigned borrowers enforced at DB query layer — not just at API layer. An analyst cannot enumerate other borrower IDs via query manipulation.
+## Test Scenarios
 
-3. **Borrower access:** Borrowers receive a separate, restricted token that grants read-only access to their own record and sanitized risk explanation (no internal scores or analyst notes exposed).
+### Critical risk borrowers
+- **B005 (Deepak Nair):** 2 consecutive missed payments, 7 failed debits, income dropped from ₹90k → ₹18k, 4 active loans → Score ~90
+- **B003 (Rahul Verma):** 35 DPD current, 5 failed debits, income dropped from ₹55k → ₹28k → Score ~85
 
-4. **Audit logging:** Every data access logged with `userId`, `borrowerId`, `endpoint`, `timestamp`. Sensitive field access (income, DPD) logged separately for compliance.
+### Watchlist / High Risk
+- **B001 (Arjun Sharma):** 1 missed, 2 partials, 3 failed debits, income dropped from ₹35k → ₹22k
+- **B009 (Karthik Bose):** 2 consecutive partials, 14 DPD, income dropped from ₹38k → ₹30k
 
-5. **Data isolation:** PII (name, phone, email) stored encrypted. Analysts query via borrower IDs — no ability to search by personal details.
+### Low risk (baseline)
+- **B002 (Priya Mehta):** All paid on time, income growing ₹82k → ₹91k, 0 failed debits
+- **B008 (Ananya Krishnan):** 18 months clean history, stable ₹95k income, low utilization
 
-6. **LLM calls:** Backend injects the borrower data; the frontend never calls the LLM directly. LLM prompt contents are logged and auditable.
+### API calls to test
+```bash
+# Borrower list (cached after first call)
+GET /api/borrowers  [Authorization: Bearer token-analyst1]
+
+# On-demand AI signal for dashboard row
+GET /api/borrowers/B005/signal  [analyst/manager only]
+
+# AI recommended action + flagged signals
+GET /api/borrowers/B005/ai-insight  [analyst/manager only]
+
+# Full AI explanation
+GET /api/borrowers/B003/alert
+
+# Analyst natural-language query
+POST /api/query  {"borrowerId":"B005","question":"Why was this borrower flagged?"}
+
+# Portfolio summary
+GET /api/portfolio/summary  [analyst/manager only]
+```
 
 ---
 
@@ -206,36 +251,13 @@ In a real implementation:
 
 | Edge Case | Handling |
 |---|---|
-| No repayment history | Flagged as insufficient history; score carries 50% penalty on payment behavior signal |
-| < 3 months history | Data quality warning shown; score marked unreliable |
-| Income inflow increased | Inflow drop signal scores 0 (no risk contribution) |
-| All signals clean | Score 0–24 → Low, no alert generated |
-| LLM API failure | Alert returns `llmError` field; risk score/reasons still shown |
+| No repayment history | Score carries 50% penalty on payment behavior signal |
+| < 3 months history | Data quality warning; score marked unreliable |
+| Income inflow increased | Income signal scores 0 (no risk contribution) |
+| All signals clean | Score 0–24 → Low, no alert |
+| LLM API failure | UI shows placeholder/error state; risk score and category still displayed |
+| LLM returns malformed JSON | `extractJSON()` strips markdown fences and finds outermost `{}` block; returns `null` on failure |
 | Unauthorized borrower access | 403 returned; no data leaked in error message |
-
----
-
-## Test Scenarios
-
-### High severity (Critical)
-- **B005 (Deepak Nair):** 2 consecutive missed payments, 7 failed debits, 80% income drop, 4 active loans → Score ~90
-- **B003 (Rahul Verma):** 35 DPD current, 5 failed debits, 49% income drop → Score ~85
-
-### Medium severity (High Risk / Watchlist)
-- **B001 (Arjun Sharma):** 1 missed, 2 partial, 3 failed debits, 37% income drop → Watchlist/High
-- **B009 (Karthik Bose):** 2 consecutive partials, 14 DPD, rising delays → Watchlist
-
-### Low severity (Low)
-- **B002 (Priya Mehta):** All paid on time, income growing, 0 failed debits → Score ~0
-- **B008 (Ananya Krishnan):** 18 months clean history, low utilization → Score ~1
-
-### Analyst queries to test
-```
-GET /api/borrowers?Authorization=Bearer token-analyst1
-GET /api/borrowers/B003/alert
-POST /api/query {"borrowerId":"B005","question":"Why was this borrower flagged?"}
-GET /api/portfolio/summary
-```
 
 ---
 
@@ -250,12 +272,12 @@ GET /api/portfolio/summary
 - No time-series ML model; rule-based scoring can miss complex interaction patterns
 - Credit utilization is a single-point metric; trend would be more informative
 - No external bureau data (CIBIL, Experian) integrated — signals are internal only
-- LLM explanations depend on wrapper availability; degradation fallback is the raw signals display
+- LLM calls are synchronous and per-borrower; at scale these would need a queue/batch system
 
 **Trade-offs made:**
-- Rule-based over ML: explainable, auditable, deployable without training data
-- Heuristic thresholds over statistical cutoffs: faster to validate with domain experts
-- Simulated auth over real JWT: reduces scope without compromising architecture demonstration
+- Rule-based scoring over ML: explainable, auditable, no training data required
+- AI-only UI design: no pre-computed labels shown; LLM derives all insights from raw data
+- Singleton service caching: avoids redundant API calls within a session; invalidated manually on logout
 
 ---
 
@@ -265,13 +287,13 @@ GET /api/portfolio/summary
 loan-ews/
 ├── backend/
 │   └── src/
-│       ├── index.js                 # Express server
+│       ├── index.js                 # Express server entry point
 │       ├── data/
-│       │   ├── borrowers.js         # Mock borrower records (10 borrowers)
+│       │   ├── borrowers.js         # Mock borrower records (10 borrowers, raw monthly income data)
 │       │   └── users.js             # RBAC user/token map
 │       ├── services/
-│       │   ├── riskScorer.js        # Rule-based scoring engine
-│       │   └── llmService.js        # LLM wrapper integration
+│       │   ├── riskScorer.js        # Rule-based scoring engine (internal use only)
+│       │   └── llmService.js        # LLM API integration + prompt builders
 │       ├── routes/
 │       │   └── api.js               # All API endpoints
 │       └── middleware/
@@ -280,11 +302,11 @@ loan-ews/
     └── src/app/
         ├── services/
         │   ├── auth.ts              # Auth service + demo users
-        │   └── api.ts               # HTTP client service
+        │   └── api.ts               # HTTP client service + all AI/borrower caches
         └── components/
             ├── login/               # Role selector / demo login
-            ├── dashboard/           # Borrower list, risk table, filters
-            ├── borrower-detail/     # Full detail, signals, AI alert, query
+            ├── dashboard/           # Borrower list, risk table, AI signal/action per row
+            ├── borrower-detail/     # Detail view, AI recommended action, flagged signals, alert, query
             ├── analyst-query/       # Free-form NL query console
             └── portfolio-summary/   # Portfolio analytics + AI summary
 ```

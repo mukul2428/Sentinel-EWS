@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of, shareReplay } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 import { AuthService } from './auth';
 import { environment } from '../../environments/environment';
 
@@ -9,6 +9,12 @@ const BASE_URL = environment.apiUrl;
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private portfolioCache$: Observable<any> | null = null;
+  private borrowersCache$: Observable<any> | null = null;
+
+  // Singleton caches — survive route navigation because the service is never destroyed
+  readonly signalCache: Record<string, { signal: string; action: string; aiGenerated: boolean }> = {};
+  readonly aiInsightCache: Record<string, any> = {};
+  readonly alertCache: Record<string, any> = {};
 
   constructor(private http: HttpClient, private auth: AuthService) {}
 
@@ -17,7 +23,14 @@ export class ApiService {
   }
 
   getBorrowers(): Observable<any> {
-    return this.http.get(`${BASE_URL}/borrowers`, { headers: this.headers() });
+    if (!this.borrowersCache$) {
+      this.borrowersCache$ = this.http.get(`${BASE_URL}/borrowers`, { headers: this.headers() }).pipe(shareReplay(1));
+    }
+    return this.borrowersCache$;
+  }
+
+  invalidateBorrowersCache(): void {
+    this.borrowersCache$ = null;
   }
 
   getBorrower(id: string): Observable<any> {
@@ -37,6 +50,14 @@ export class ApiService {
       this.portfolioCache$ = this.http.get(`${BASE_URL}/portfolio/summary`, { headers: this.headers() }).pipe(shareReplay(1));
     }
     return this.portfolioCache$;
+  }
+
+  generateSignal(borrowerId: string): Observable<{ signal: string; action: string; aiGenerated: boolean }> {
+    return this.http.get<{ signal: string; action: string; aiGenerated: boolean }>(`${BASE_URL}/borrowers/${borrowerId}/signal`, { headers: this.headers() });
+  }
+
+  getAiInsight(borrowerId: string): Observable<any> {
+    return this.http.get(`${BASE_URL}/borrowers/${borrowerId}/ai-insight`, { headers: this.headers() });
   }
 
   invalidatePortfolioCache(): void {

@@ -27,6 +27,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 3,
       creditUtilization: 82,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 22000 },
+        { month: "2024-04", inflow: 35000 },
+        { month: "2024-03", inflow: 34000 },
+        { month: "2024-02", inflow: 35000 },
+        { month: "2024-01", inflow: 36000 },
+        { month: "2023-12", inflow: 35000 }
+      ],
       avgMonthlyInflow: 35000,
       lastMonthInflow: 22000,
       inflowDropPercent: 37,
@@ -70,6 +78,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 0,
       creditUtilization: 28,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 91000 },
+        { month: "2024-04", inflow: 85000 },
+        { month: "2024-03", inflow: 83000 },
+        { month: "2024-02", inflow: 86000 },
+        { month: "2024-01", inflow: 84000 },
+        { month: "2023-12", inflow: 82000 }
+      ],
       avgMonthlyInflow: 85000,
       lastMonthInflow: 91000,
       inflowDropPercent: -7,
@@ -112,6 +128,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 5,
       creditUtilization: 91,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 28000 },
+        { month: "2024-04", inflow: 55000 },
+        { month: "2024-03", inflow: 54000 },
+        { month: "2024-02", inflow: 56000 },
+        { month: "2024-01", inflow: 55000 },
+        { month: "2023-12", inflow: 57000 }
+      ],
       avgMonthlyInflow: 55000,
       lastMonthInflow: 28000,
       inflowDropPercent: 49,
@@ -155,6 +179,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 1,
       creditUtilization: 62,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 38000 },
+        { month: "2024-04", inflow: 42000 },
+        { month: "2024-03", inflow: 41000 },
+        { month: "2024-02", inflow: 43000 },
+        { month: "2024-01", inflow: 42000 },
+        { month: "2023-12", inflow: 42000 }
+      ],
       avgMonthlyInflow: 42000,
       lastMonthInflow: 38000,
       inflowDropPercent: 10,
@@ -197,6 +229,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 7,
       creditUtilization: 96,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 18000 },
+        { month: "2024-04", inflow: 25000 },
+        { month: "2024-03", inflow: 90000 },
+        { month: "2024-02", inflow: 90000 },
+        { month: "2024-01", inflow: 88000 },
+        { month: "2023-12", inflow: 92000 }
+      ],
       avgMonthlyInflow: 90000,
       lastMonthInflow: 18000,
       inflowDropPercent: 80,
@@ -238,6 +278,12 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 0,
       creditUtilization: 15,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 65000 },
+        { month: "2024-04", inflow: 62000 },
+        { month: "2024-03", inflow: 61000 },
+        { month: "2024-02", inflow: 62000 }
+      ],
       avgMonthlyInflow: 62000,
       lastMonthInflow: 65000,
       inflowDropPercent: -5,
@@ -279,6 +325,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 2,
       creditUtilization: 58,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 43000 },
+        { month: "2024-04", inflow: 48000 },
+        { month: "2024-03", inflow: 47000 },
+        { month: "2024-02", inflow: 49000 },
+        { month: "2024-01", inflow: 48000 },
+        { month: "2023-12", inflow: 47000 }
+      ],
       avgMonthlyInflow: 48000,
       lastMonthInflow: 43000,
       inflowDropPercent: 10,
@@ -321,6 +375,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 0,
       creditUtilization: 22,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 98000 },
+        { month: "2024-04", inflow: 95000 },
+        { month: "2024-03", inflow: 94000 },
+        { month: "2024-02", inflow: 95000 },
+        { month: "2024-01", inflow: 96000 },
+        { month: "2023-12", inflow: 95000 }
+      ],
       avgMonthlyInflow: 95000,
       lastMonthInflow: 98000,
       inflowDropPercent: -3,
@@ -362,6 +424,14 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 2,
       creditUtilization: 74,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 30000 },
+        { month: "2024-04", inflow: 38000 },
+        { month: "2024-03", inflow: 39000 },
+        { month: "2024-02", inflow: 38000 },
+        { month: "2024-01", inflow: 37000 },
+        { month: "2023-12", inflow: 38000 }
+      ],
       avgMonthlyInflow: 38000,
       lastMonthInflow: 30000,
       inflowDropPercent: 21,
@@ -403,6 +473,13 @@ const borrowers = [
     accountSignals: {
       failedAutoDebits: 0,
       creditUtilization: 31,
+      monthlyInflows: [
+        { month: "2024-05", inflow: 52000 },
+        { month: "2024-04", inflow: 52000 },
+        { month: "2024-03", inflow: 51000 },
+        { month: "2024-02", inflow: 52000 },
+        { month: "2024-01", inflow: 52000 }
+      ],
       avgMonthlyInflow: 52000,
       lastMonthInflow: 52000,
       inflowDropPercent: 0,

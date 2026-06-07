@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const borrowers = require("../data/borrowers");
 const { scoreBorrower, scoreAllBorrowers } = require("../services/riskScorer");
-const { generateRiskExplanation, handleAnalystQuery, generatePortfolioSummary } = require("../services/llmService");
+const { generateRiskExplanation, handleAnalystQuery, generatePortfolioSummary, generateDashboardSignal, generateDetailInsight } = require("../services/llmService");
 const { authenticate, requireRole, canAccessBorrower } = require("../middleware/auth");
 
 // All routes require authentication
@@ -10,7 +10,7 @@ router.use(authenticate);
 
 /**
  * GET /api/borrowers
- * Returns all borrowers (filtered by role) sorted by risk score DESC
+ *  * Returns all borrowers (filtered by role) sorted by risk score DESC
  */
 router.get("/borrowers", (req, res) => {
   try {
@@ -27,7 +27,7 @@ router.get("/borrowers", (req, res) => {
     const results = scoreAllBorrowers(accessibleBorrowers);
     results.sort((a, b) => b.riskScore - a.riskScore);
 
-    // Strip sensitive fields from borrower-level access
+        // Strip sensitive fields from borrower-level access
     if (req.user.role === "borrower") {
       const stripped = results.map(r => ({
         borrowerId: r.borrowerId,
@@ -35,8 +35,6 @@ router.get("/borrowers", (req, res) => {
         riskCategory: r.riskCategory,
         riskCategoryLabel: r.riskCategoryLabel,
         riskScore: r.riskScore,
-        reasons: r.reasons,
-        recommendedAction: r.recommendedAction,
         loan: {
           emiAmount: r.loan?.emiAmount,
           nextDueDate: r.loan?.nextDueDate,
@@ -46,7 +44,9 @@ router.get("/borrowers", (req, res) => {
       return res.json({ data: stripped, role: req.user.role });
     }
 
-    res.json({ data: results, role: req.user.role, user: { id: req.user.id, name: req.user.name } });
+    // Strip pre-computed reasons and recommendedAction — LLM derives these from raw data
+    const stripped = results.map(({ reasons, recommendedAction, ...rest }) => rest);
+    res.json({ data: stripped, role: req.user.role, user: { id: req.user.id, name: req.user.name } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to score borrowers" });
@@ -55,7 +55,6 @@ router.get("/borrowers", (req, res) => {
 
 /**
  * GET /api/borrowers/:id
- * Returns full borrower detail with risk assessment
  */
 router.get("/borrowers/:id", (req, res) => {
   try {
@@ -89,8 +88,38 @@ router.get("/borrowers/:id", (req, res) => {
 });
 
 /**
+ * GET /api/borrowers/:id/signal
+ * Concise signal + action via LLM for the dashboard row (on-demand)
+ */
+router.get("/borrowers/:id/signal", requireRole("analyst", "manager"), async (req, res) => {
+  try {
+    const borrower = borrowers.find(b => b.id === req.params.id);
+    if (!borrower) return res.status(404).json({ error: "Borrower not found" });
+    if (!canAccessBorrower(req.user, req.params.id)) {
+      return res.status(403).json({ error: "Access denied to this borrower's data" });
+    }
+
+    const riskResult = scoreBorrower(borrower);
+    let signal = "—";
+    let action = "—";
+    let aiGenerated = false;
+    try {
+      const result = await generateDashboardSignal(borrower, riskResult);
+      signal = result.signal || signal;
+      action = result.action || action;
+      aiGenerated = true;
+    } catch (llmErr) {
+      console.error("Dashboard signal LLM error:", llmErr.message);
+    }
+    res.json({ signal, action, aiGenerated });
+  } catch (err) {
+    res.status(500).json({ error: "Signal generation failed" });
+  }
+});
+
+/**
  * GET /api/borrowers/:id/alert
- * Returns risk alert with LLM-generated explanation
+ * Full LLM markdown explanation — used by the AI Alert tab in borrower detail
  */
 router.get("/borrowers/:id/alert", async (req, res) => {
   try {
@@ -103,7 +132,7 @@ router.get("/borrowers/:id/alert", async (req, res) => {
     if (!borrower) return res.status(404).json({ error: "Borrower not found" });
 
     const riskResult = scoreBorrower(borrower);
-
+    
     let llmExplanation = null;
     let llmError = null;
     try {
@@ -111,7 +140,7 @@ router.get("/borrowers/:id/alert", async (req, res) => {
     } catch (e) {
       llmError = "LLM explanation unavailable: " + e.message;
     }
-
+    
     res.json({
       borrowerId: id,
       borrowerName: borrower.name,
@@ -127,9 +156,34 @@ router.get("/borrowers/:id/alert", async (req, res) => {
 });
 
 /**
+ * GET /api/borrowers/:id/ai-insight
+ * AI-generated recommended action + flagged signals for the borrower detail page
+ */
+router.get("/borrowers/:id/ai-insight", requireRole("analyst", "manager"), async (req, res) => {
+  try {
+    const borrower = borrowers.find(b => b.id === req.params.id);
+    if (!borrower) return res.status(404).json({ error: "Borrower not found" });
+    if (!canAccessBorrower(req.user, req.params.id)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const riskResult = scoreBorrower(borrower);
+    let insight = null;
+    let aiError = null;
+    try {
+      insight = await generateDetailInsight(borrower, riskResult);
+    } catch (e) {
+      aiError = "AI insight unavailable: " + e.message;
+    }
+    res.json({ insight, aiError, aiGenerated: !!insight });
+  } catch (err) {
+    res.status(500).json({ error: "AI insight generation failed" });
+  }
+});
+
+/**
  * POST /api/query
- * Analyst asks a natural language question about a borrower
- * Body: { borrowerId: "B001", question: "Why was this borrower flagged?" }
+ * Analyst natural-language query about a specific borrower
  */
 router.post("/query", requireRole("analyst", "manager"), async (req, res) => {
   try {
@@ -146,7 +200,7 @@ router.post("/query", requireRole("analyst", "manager"), async (req, res) => {
     if (!borrower) return res.status(404).json({ error: "Borrower not found" });
 
     const riskResult = scoreBorrower(borrower);
-
+    
     let answer = null;
     let error = null;
     try {
@@ -154,7 +208,7 @@ router.post("/query", requireRole("analyst", "manager"), async (req, res) => {
     } catch (e) {
       error = "LLM query failed: " + e.message;
     }
-
+    
     res.json({
       borrowerId,
       question,
@@ -171,7 +225,6 @@ router.post("/query", requireRole("analyst", "manager"), async (req, res) => {
 
 /**
  * GET /api/portfolio/summary
- * Manager-only: portfolio-level risk summary
  */
 router.get("/portfolio/summary", requireRole("manager", "analyst"), async (req, res) => {
   try {
@@ -181,7 +234,7 @@ router.get("/portfolio/summary", requireRole("manager", "analyst"), async (req, 
     }
 
     const allRisks = scoreAllBorrowers(accessibleBorrowers);
-
+    
     const breakdown = {
       total: allRisks.length,
       critical: allRisks.filter(r => r.riskCategory === "CRITICAL"),
@@ -219,7 +272,6 @@ router.get("/portfolio/summary", requireRole("manager", "analyst"), async (req, 
 
 /**
  * GET /api/health
- * Health check (no auth)
  */
 router.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

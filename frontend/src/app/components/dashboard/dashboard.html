@@ -4,95 +4,131 @@
       <h2>Risk Dashboard</h2>
       <p class="sub">Borrowers sorted by risk severity · as of today</p>
     </div>
-    <div class="header-right" *ngIf="!loading">
-      <span class="total-badge">{{ borrowers.length }} borrowers</span>
-    </div>
+    @if (!loading) {
+      <div class="header-right">
+        <span class="total-badge">{{ borrowers.length }} borrowers</span>
+      </div>
+    }
   </div>
 
   <!-- Stats Row -->
-  <div class="stats-row" *ngIf="!loading">
-    <div class="stat-card critical" (click)="filterCategory='CRITICAL'">
-      <div class="stat-num">{{ stats.critical }}</div>
-      <div class="stat-label">Critical</div>
+  @if (!loading) {
+    <div class="stats-row">
+      <div class="stat-card critical" (click)="filterCategory='CRITICAL'">
+        <div class="stat-num">{{ stats.critical }}</div>
+        <div class="stat-label">Critical</div>
+      </div>
+      <div class="stat-card high" (click)="filterCategory='HIGH_RISK'">
+        <div class="stat-num">{{ stats.highRisk }}</div>
+        <div class="stat-label">High Risk</div>
+      </div>
+      <div class="stat-card watch" (click)="filterCategory='WATCHLIST'">
+        <div class="stat-num">{{ stats.watchlist }}</div>
+        <div class="stat-label">Watchlist</div>
+      </div>
+      <div class="stat-card low" (click)="filterCategory='LOW'">
+        <div class="stat-num">{{ stats.low }}</div>
+        <div class="stat-label">Low Risk</div>
+      </div>
     </div>
-    <div class="stat-card high" (click)="filterCategory='HIGH_RISK'">
-      <div class="stat-num">{{ stats.highRisk }}</div>
-      <div class="stat-label">High Risk</div>
-    </div>
-    <div class="stat-card watch" (click)="filterCategory='WATCHLIST'">
-      <div class="stat-num">{{ stats.watchlist }}</div>
-      <div class="stat-label">Watchlist</div>
-    </div>
-    <div class="stat-card low" (click)="filterCategory='LOW'">
-      <div class="stat-num">{{ stats.low }}</div>
-      <div class="stat-label">Low Risk</div>
-    </div>
-  </div>
+  }
 
   <!-- Filter Tabs -->
-  <div class="filter-tabs" *ngIf="!loading">
-    <button *ngFor="let cat of categories"
-      [class.active]="filterCategory === cat"
-      (click)="filterCategory = cat">
-      {{ cat === 'ALL' ? 'All' : cat === 'HIGH_RISK' ? 'High Risk' : (cat | titlecase) }}
-    </button>
-  </div>
+  @if (!loading) {
+    <div class="filter-tabs">
+      @for (cat of categories; track cat) {
+        <button
+          [class.active]="filterCategory === cat"
+          (click)="filterCategory = cat">
+          {{ cat === 'ALL' ? 'All' : cat === 'HIGH_RISK' ? 'High Risk' : (cat | titlecase) }}
+        </button>
+      }
+    </div>
+  }
 
   <!-- Loading -->
-  <div class="loading-state" *ngIf="loading">
-    <div class="spinner"></div>
-    <span>Loading borrower risk data...</span>
-  </div>
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading borrower risk data...</span>
+    </div>
+  }
 
   <!-- Error -->
-  <div class="error-state" *ngIf="error">
-    <span>⚠️ {{ error }}</span>
-  </div>
+  @if (error) {
+    <div class="error-state">
+      <span>⚠️ {{ error }}</span>
+    </div>
+  }
 
   <!-- Borrower Table -->
-  <div class="borrower-table" *ngIf="!loading && !error">
-    <div class="table-header">
-      <span>Borrower</span>
-      <span>Loan Details</span>
-      <span>Risk Score</span>
-      <span>Category</span>
-      <span>Top Signal</span>
-      <span>Action</span>
-      <span></span>
-    </div>
+  @if (!loading && !error) {
+    <div class="borrower-table">
+      <div class="table-header">
+        <span>Borrower</span>
+        <span>Loan Details</span>
+        <span>Risk Score</span>
+        <span>Category</span>
+        <span>Top Signal</span>
+        <span>Action</span>
+        <span></span>
+      </div>
 
-    <div class="table-row" *ngFor="let b of filtered" [routerLink]="['/borrower', b.borrowerId]">
-      <div class="col-borrower">
-        <div class="b-name">{{ b.borrowerName }}</div>
-        <div class="b-id">{{ b.borrowerId }}</div>
-      </div>
-      <div class="col-loan">
-        <div class="loan-type">{{ b.loan?.loanType }}</div>
-        <div class="loan-emi">EMI ₹{{ b.loan?.emiAmount | number }}</div>
-      </div>
-      <div class="col-score">
-        <div class="score-ring" [ngClass]="getCategoryClass(b.riskCategory)">
-          {{ b.riskScore }}
+      @for (b of filtered; track b.borrowerId) {
+        <div class="table-row" [routerLink]="['/borrower', b.borrowerId]">
+          <div class="col-borrower">
+            <div class="b-name">{{ b.borrowerName }}</div>
+            <div class="b-id">{{ b.borrowerId }}</div>
+          </div>
+          <div class="col-loan">
+            <div class="loan-type">{{ b.loan?.loanType }}</div>
+            <div class="loan-emi">EMI ₹{{ b.loan?.emiAmount | number }}</div>
+          </div>
+          <div class="col-score">
+            <div class="score-ring" [ngClass]="getCategoryClass(b.riskCategory)">
+              {{ b.riskScore }}
+            </div>
+          </div>
+          <div class="col-category">
+            <span class="cat-badge" [ngClass]="getCategoryClass(b.riskCategory)">
+              {{ b.riskCategoryLabel }}
+            </span>
+          </div>
+          <div class="col-signal">
+            <div class="signal-row">
+              @if (signalLoading[b.borrowerId]) {
+                <span class="signal-text analyzing">Analyzing...</span>
+              } @else if (isAiGenerated(b.borrowerId)) {
+                <span class="signal-text ai-signal">{{ getSignal(b.borrowerId) }}</span>
+                <span class="ai-chip" title="AI generated based on this borrower's data">✦ AI</span>
+              } @else {
+                <span class="signal-placeholder">✦ AI signal</span>
+              }
+              <button class="refresh-btn" (click)="onSignalClick($event, b.borrowerId)"
+                      [class.spinning]="signalLoading[b.borrowerId]"
+                      title="Generate AI insight from this borrower's data">
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="col-action">
+            @if (signalLoading[b.borrowerId]) {
+              <!-- <div class="action-spinner"></div> -->
+            } @else if (isAiGenerated(b.borrowerId)) {
+              <span class="action-text ai-action">{{ getAction(b.borrowerId) }}</span>
+            } @else {
+              <span class="action-hint"> Click to get AI signal & action</span>
+            }
+          </div>
+          <div class="col-arrow">→</div>
         </div>
-      </div>
-      <div class="col-category">
-        <span class="cat-badge" [ngClass]="getCategoryClass(b.riskCategory)">
-          {{ b.riskCategoryLabel }}
-        </span>
-      </div>
-      <div class="col-signal">
-        <span class="signal-text">{{ b.reasons[0]?.label || '—' }}</span>
-        <span class="signal-detail">{{ b.reasons[0]?.detail || '' }}</span>
-      </div>
-      <div class="col-action">
-        <span class="urgency-dot" [ngClass]="getUrgencyClass(b.recommendedAction?.urgency)"></span>
-        <span class="action-label">{{ b.recommendedAction?.label }}</span>
-      </div>
-      <div class="col-arrow">→</div>
-    </div>
+      }
 
-    <div class="empty-state" *ngIf="filtered.length === 0">
-      No borrowers in this category.
+      @if (filtered.length === 0) {
+        <div class="empty-state">No borrowers in this category.</div>
+      }
     </div>
-  </div>
+  }
 </div>

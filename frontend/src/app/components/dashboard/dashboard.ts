@@ -18,6 +18,7 @@ export class DashboardComponent implements OnInit {
   filterCategory = 'ALL';
 
   categories = ['ALL', 'CRITICAL', 'HIGH_RISK', 'WATCHLIST', 'LOW'];
+  signalLoading: Record<string, boolean> = {};
 
   constructor(private api: ApiService, public auth: AuthService) {}
 
@@ -55,5 +56,38 @@ export class DashboardComponent implements OnInit {
       MEDIUM: 'urgency-medium', LOW: 'urgency-low', NONE: 'urgency-none'
     };
     return map[urgency] || '';
+  }
+
+  onSignalClick(event: MouseEvent, borrowerId: string): void {
+    event.stopPropagation();
+    this.fetchSignalAndAction(borrowerId);
+  }
+
+  fetchSignalAndAction(borrowerId: string): void {
+    if (this.signalLoading[borrowerId]) return;
+    // Already cached — no need to call API again
+    if (this.api.signalCache[borrowerId]?.aiGenerated) return;
+    this.signalLoading[borrowerId] = true;
+    this.api.generateSignal(borrowerId).subscribe({
+      next: (res) => {
+        this.api.signalCache[borrowerId] = res;
+        this.signalLoading[borrowerId] = false;
+      },
+      error: () => {
+        this.signalLoading[borrowerId] = false;
+      }
+    });
+  }
+
+  getSignal(borrowerId: string): string {
+    return this.api.signalCache[borrowerId]?.signal ?? '';
+  }
+
+  getAction(borrowerId: string): string {
+    return this.api.signalCache[borrowerId]?.action ?? '';
+  }
+
+  isAiGenerated(borrowerId: string): boolean {
+    return this.api.signalCache[borrowerId]?.aiGenerated ?? false;
   }
 }

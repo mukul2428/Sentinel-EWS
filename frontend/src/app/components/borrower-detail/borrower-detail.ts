@@ -23,6 +23,10 @@ export class BorrowerDetailComponent implements OnInit {
   error = '';
   activeTab = 'overview';
 
+  aiInsight: any = null;
+  aiInsightLoading = false;
+  aiInsightError = '';
+
   question = '';
   queryResult: any = null;
   queryLoading = false;
@@ -35,6 +39,13 @@ export class BorrowerDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.borrowerId = this.route.snapshot.params['id'];
+    // Restore AI data from singleton service cache (survives route navigation)
+    if (this.api.aiInsightCache[this.borrowerId]) {
+      this.aiInsight = this.api.aiInsightCache[this.borrowerId];
+    }
+    if (this.api.alertCache[this.borrowerId]) {
+      this.alertData = this.api.alertCache[this.borrowerId];
+    }
     this.api.getBorrower(this.borrowerId).subscribe({
       next: (res) => {
         this.borrowerData = res.borrower;
@@ -51,10 +62,36 @@ export class BorrowerDetailComponent implements OnInit {
     if (this.alertData) return;
     this.alertLoading = true;
     this.api.getBorrowerAlert(this.borrowerId).subscribe({
-      next: (res) => { this.alertData = res; this.alertLoading = false; },
+      next: (res) => {
+        this.alertData = res;
+        this.api.alertCache[this.borrowerId] = res;
+        this.alertLoading = false;
+      },
       error: (e) => { this.error = e.message; this.alertLoading = false; }
     });
   }
+
+  loadAiInsight(): void {
+    if (this.aiInsightLoading) return;
+    if (this.aiInsight) return;           // already cached — no repeat call
+    this.aiInsightLoading = true;
+    this.aiInsightError = '';
+    this.api.getAiInsight(this.borrowerId).subscribe({
+      next: (res) => {
+        this.aiInsight = res.insight;
+        this.api.aiInsightCache[this.borrowerId] = res.insight;
+        this.aiInsightError = res.aiError || '';
+        this.aiInsightLoading = false;
+      },
+      error: (e) => {
+        this.aiInsightError = e.message;
+        this.aiInsightLoading = false;
+      }
+    });
+  }
+
+  get aiRecommendedAction() { return this.aiInsight?.recommendedAction ?? null; }
+  get aiFlaggedSignals(): any[] | null { return this.aiInsight?.flaggedSignals ?? null; }
 
   submitQuery(): void {
     if (!this.question.trim()) return;
