@@ -110,125 +110,125 @@ function getRiskCategory(score) {
   return "LOW";
 }
 
-function getRecommendedAction(category, signals, repaymentHistory) {
-  const hasCurrentDPD = signals.currentDPD > 0;
-  const criticalInflow = signals.inflowDropPercent > 50;
+// function getRecommendedAction(category, signals, repaymentHistory) {
+//   const hasCurrentDPD = signals.currentDPD > 0;
+//   const criticalInflow = signals.inflowDropPercent > 50;
 
-  switch (category) {
-    case "CRITICAL":
-      if (hasCurrentDPD && criticalInflow) {
-        return {
-          action: "RESTRUCTURING_REVIEW",
-          label: "Initiate Restructuring Review",
-          description: "Severe DPD with critical income drop. Escalate to credit committee for loan restructuring or settlement options.",
-          urgency: "IMMEDIATE"
-        };
-      }
-      return {
-        action: "PROACTIVE_CALL",
-        label: "Proactive Collections Call",
-        description: "Immediate outreach by senior collections agent. Explore payment plan or hardship relief.",
-        urgency: "IMMEDIATE"
-      };
-    case "HIGH_RISK":
-      return {
-        action: "PAYMENT_PLAN_OFFER",
-        label: "Offer Payment Plan",
-        description: "Contact borrower with structured payment plan options before next due date.",
-        urgency: "HIGH"
-      };
-    case "WATCHLIST":
-      if (signals.failedAutoDebits >= 2) {
-        return {
-          action: "PROACTIVE_CALL",
-          label: "Proactive Outreach Call",
-          description: "Verify payment method and confirm upcoming EMI. Offer assistance if needed.",
-          urgency: "MEDIUM"
-        };
-      }
-      return {
-        action: "SOFT_REMINDER",
-        label: "Send Soft Reminder",
-        description: "Automated reminder via SMS/email ahead of due date. Monitor for next 7 days.",
-        urgency: "LOW"
-      };
-    default:
-      return {
-        action: "MONITORING",
-        label: "Routine Monitoring",
-        description: "No immediate action required. Continue standard monitoring cycle.",
-        urgency: "NONE"
-      };
-  }
-}
+//   switch (category) {
+//     case "CRITICAL":
+//       if (hasCurrentDPD && criticalInflow) {
+//         return {
+//           action: "RESTRUCTURING_REVIEW",
+//           label: "Initiate Restructuring Review",
+//           description: "Severe DPD with critical income drop. Escalate to credit committee for loan restructuring or settlement options.",
+//           urgency: "IMMEDIATE"
+//         };
+//       }
+//       return {
+//         action: "PROACTIVE_CALL",
+//         label: "Proactive Collections Call",
+//         description: "Immediate outreach by senior collections agent. Explore payment plan or hardship relief.",
+//         urgency: "IMMEDIATE"
+//       };
+//     case "HIGH_RISK":
+//       return {
+//         action: "PAYMENT_PLAN_OFFER",
+//         label: "Offer Payment Plan",
+//         description: "Contact borrower with structured payment plan options before next due date.",
+//         urgency: "HIGH"
+//       };
+//     case "WATCHLIST":
+//       if (signals.failedAutoDebits >= 2) {
+//         return {
+//           action: "PROACTIVE_CALL",
+//           label: "Proactive Outreach Call",
+//           description: "Verify payment method and confirm upcoming EMI. Offer assistance if needed.",
+//           urgency: "MEDIUM"
+//         };
+//       }
+//       return {
+//         action: "SOFT_REMINDER",
+//         label: "Send Soft Reminder",
+//         description: "Automated reminder via SMS/email ahead of due date. Monitor for next 7 days.",
+//         urgency: "LOW"
+//       };
+//     default:
+//       return {
+//         action: "MONITORING",
+//         label: "Routine Monitoring",
+//         description: "No immediate action required. Continue standard monitoring cycle.",
+//         urgency: "NONE"
+//       };
+//   }
+// }
 
-function buildRiskReasons(breakdown, signals, repaymentHistory) {
-  const reasons = [];
+// function buildRiskReasons(breakdown, signals, repaymentHistory) {
+//   const reasons = [];
 
-  if (breakdown.dpdScore > 0) {
-    const dpd = Math.max(signals.currentDPD, signals.maxDPDLast90Days);
-    reasons.push({
-      signal: "DAYS_PAST_DUE",
-      label: "Days Past Due",
-      detail: `${dpd} days past due in last 90 days`,
-      severity: dpd >= 30 ? "HIGH" : dpd >= 15 ? "MEDIUM" : "LOW"
-    });
-  }
+//   if (breakdown.dpdScore > 0) {
+//     const dpd = Math.max(signals.currentDPD, signals.maxDPDLast90Days);
+//     reasons.push({
+//       signal: "DAYS_PAST_DUE",
+//       label: "Days Past Due",
+//       detail: `${dpd} days past due in last 90 days`,
+//       severity: dpd >= 30 ? "HIGH" : dpd >= 15 ? "MEDIUM" : "LOW"
+//     });
+//   }
 
-  if (breakdown.failedDebitScore > 0) {
-    reasons.push({
-      signal: "FAILED_AUTO_DEBITS",
-      label: "Failed Auto-Debits",
-      detail: `${signals.failedAutoDebits} failed auto-debit attempt(s) recently`,
-      severity: signals.failedAutoDebits >= 5 ? "HIGH" : signals.failedAutoDebits >= 3 ? "MEDIUM" : "LOW"
-    });
-  }
+//   if (breakdown.failedDebitScore > 0) {
+//     reasons.push({
+//       signal: "FAILED_AUTO_DEBITS",
+//       label: "Failed Auto-Debits",
+//       detail: `${signals.failedAutoDebits} failed auto-debit attempt(s) recently`,
+//       severity: signals.failedAutoDebits >= 5 ? "HIGH" : signals.failedAutoDebits >= 3 ? "MEDIUM" : "LOW"
+//     });
+//   }
 
-  if (breakdown.inflowScore > 0) {
-    reasons.push({
-      signal: "INCOME_INFLOW_DROP",
-      label: "Income Drop",
-      detail: `Monthly inflow dropped ${signals.inflowDropPercent.toFixed(0)}% (from ₹${signals.avgMonthlyInflow.toLocaleString()} to ₹${signals.lastMonthInflow.toLocaleString()})`,
-      severity: signals.inflowDropPercent >= 50 ? "HIGH" : signals.inflowDropPercent >= 30 ? "MEDIUM" : "LOW"
-    });
-  }
+//   if (breakdown.inflowScore > 0) {
+//     reasons.push({
+//       signal: "INCOME_INFLOW_DROP",
+//       label: "Income Drop",
+//       detail: `Monthly inflow dropped ${signals.inflowDropPercent.toFixed(0)}% (from ₹${signals.avgMonthlyInflow.toLocaleString()} to ₹${signals.lastMonthInflow.toLocaleString()})`,
+//       severity: signals.inflowDropPercent >= 50 ? "HIGH" : signals.inflowDropPercent >= 30 ? "MEDIUM" : "LOW"
+//     });
+//   }
 
-  if (breakdown.utilizationScore > 0) {
-    reasons.push({
-      signal: "HIGH_CREDIT_UTILIZATION",
-      label: "High Credit Utilization",
-      detail: `Credit utilization at ${signals.creditUtilization}% (above healthy 40% threshold)`,
-      severity: signals.creditUtilization >= 80 ? "HIGH" : signals.creditUtilization >= 60 ? "MEDIUM" : "LOW"
-    });
-  }
+//   if (breakdown.utilizationScore > 0) {
+//     reasons.push({
+//       signal: "HIGH_CREDIT_UTILIZATION",
+//       label: "High Credit Utilization",
+//       detail: `Credit utilization at ${signals.creditUtilization}% (above healthy 40% threshold)`,
+//       severity: signals.creditUtilization >= 80 ? "HIGH" : signals.creditUtilization >= 60 ? "MEDIUM" : "LOW"
+//     });
+//   }
 
-  if (breakdown.behaviorScore > 0) {
-    const last3 = repaymentHistory.slice(0, 3);
-    const missedCount = last3.filter(p => p.status === "MISSED").length;
-    const partialCount = last3.filter(p => p.status === "PARTIAL").length;
-    let detail = "";
-    if (missedCount > 0) detail += `${missedCount} missed payment(s) `;
-    if (partialCount > 0) detail += `${partialCount} partial payment(s) `;
-    detail += "in last 3 months";
-    reasons.push({
-      signal: "PAYMENT_BEHAVIOR",
-      label: "Deteriorating Payment Pattern",
-      detail: detail.trim(),
-      severity: missedCount >= 2 ? "HIGH" : "MEDIUM"
-    });
-  }
+//   if (breakdown.behaviorScore > 0) {
+//     const last3 = repaymentHistory.slice(0, 3);
+//     const missedCount = last3.filter(p => p.status === "MISSED").length;
+//     const partialCount = last3.filter(p => p.status === "PARTIAL").length;
+//     let detail = "";
+//     if (missedCount > 0) detail += `${missedCount} missed payment(s) `;
+//     if (partialCount > 0) detail += `${partialCount} partial payment(s) `;
+//     detail += "in last 3 months";
+//     reasons.push({
+//       signal: "PAYMENT_BEHAVIOR",
+//       label: "Deteriorating Payment Pattern",
+//       detail: detail.trim(),
+//       severity: missedCount >= 2 ? "HIGH" : "MEDIUM"
+//     });
+//   }
 
-  if (signals.activeLoans >= 3) {
-    reasons.push({
-      signal: "MULTIPLE_LOANS",
-      label: "Multiple Active Loans",
-      detail: `Borrower has ${signals.activeLoans} active loans indicating high debt load`,
-      severity: signals.activeLoans >= 4 ? "HIGH" : "MEDIUM"
-    });
-  }
+//   if (signals.activeLoans >= 3) {
+//     reasons.push({
+//       signal: "MULTIPLE_LOANS",
+//       label: "Multiple Active Loans",
+//       detail: `Borrower has ${signals.activeLoans} active loans indicating high debt load`,
+//       severity: signals.activeLoans >= 4 ? "HIGH" : "MEDIUM"
+//     });
+//   }
 
-  return reasons;
-}
+//   return reasons;
+// }
 
 function calculateInsufficientHistoryFlag(repaymentHistory) {
   if (!repaymentHistory || repaymentHistory.length === 0) return { flag: true, message: "No repayment history available" };
@@ -253,8 +253,8 @@ function scoreBorrower(borrower) {
 
   const breakdown = { dpdScore, failedDebitScore, inflowScore, utilizationScore, behaviorScore };
   const category = getRiskCategory(totalScore);
-  const reasons = buildRiskReasons(breakdown, accountSignals, repaymentHistory);
-  const recommendedAction = getRecommendedAction(category, accountSignals, repaymentHistory);
+  //const reasons = buildRiskReasons(breakdown, accountSignals, repaymentHistory);
+  //const recommendedAction = getRecommendedAction(category, accountSignals, repaymentHistory);
   const historyFlag = calculateInsufficientHistoryFlag(repaymentHistory);
 
   // Scenario simulation: what if next EMI is missed?
@@ -267,8 +267,8 @@ function scoreBorrower(borrower) {
     riskScore: totalScore,
     riskCategory: category,
     riskCategoryLabel: getCategoryLabel(category),
-    reasons,
-    recommendedAction,
+    //reasons,
+    //recommendedAction,
     scoreBreakdown: {
       daysPassDue: Math.round(dpdScore),
       failedAutoDebits: Math.round(failedDebitScore),

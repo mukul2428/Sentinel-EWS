@@ -37,6 +37,6 @@ export const routes: Routes = [
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'borrower/:id', component: BorrowerDetailComponent, canActivate: [authGuard] },
   { path: 'query', component: AnalystQueryComponent, canActivate: [analystGuard] },
-  { path: 'portfolio', component: PortfolioSummaryComponent, canActivate: [analystGuard] },
+  { path: 'portfolio', component: PortfolioSummaryComponent, canActivate: [managerGuard] },
   { path: '**', redirectTo: 'dashboard' }
 ];

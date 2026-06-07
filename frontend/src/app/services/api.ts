@@ -12,9 +12,10 @@ export class ApiService {
   private borrowersCache$: Observable<any> | null = null;
 
   // Singleton caches — survive route navigation because the service is never destroyed
-  readonly signalCache: Record<string, { signal: string; action: string; aiGenerated: boolean }> = {};
-  readonly aiInsightCache: Record<string, any> = {};
-  readonly alertCache: Record<string, any> = {};
+  signalCache: Record<string, { signal: string; action: string; aiGenerated: boolean }> = {};
+  aiInsightCache: Record<string, any> = {};
+  alertCache: Record<string, any> = {};
+  private borrowerCache: Record<string, any> = {};
 
   constructor(private http: HttpClient, private auth: AuthService) {}
 
@@ -34,7 +35,10 @@ export class ApiService {
   }
 
   getBorrower(id: string): Observable<any> {
-    return this.http.get(`${BASE_URL}/borrowers/${id}`, { headers: this.headers() });
+    if (!this.borrowerCache[id]) {
+      this.borrowerCache[id] = this.http.get(`${BASE_URL}/borrowers/${id}`, { headers: this.headers() }).pipe(shareReplay(1));
+    }
+    return this.borrowerCache[id];
   }
 
   getBorrowerAlert(id: string): Observable<any> {
@@ -62,5 +66,14 @@ export class ApiService {
 
   invalidatePortfolioCache(): void {
     this.portfolioCache$ = null;
+  }
+
+  clearAllCaches(): void {
+    this.portfolioCache$ = null;
+    this.borrowersCache$ = null;
+    this.borrowerCache = {};
+    this.signalCache = {};
+    this.aiInsightCache = {};
+    this.alertCache = {};
   }
 }

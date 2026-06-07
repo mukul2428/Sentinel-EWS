@@ -67,6 +67,7 @@ router.get("/borrowers/:id", (req, res) => {
     if (!borrower) return res.status(404).json({ error: "Borrower not found" });
 
     const riskResult = scoreBorrower(borrower);
+    console.log(riskResult);
 
     res.json({
       borrower: {
@@ -226,7 +227,7 @@ router.post("/query", requireRole("analyst", "manager"), async (req, res) => {
 /**
  * GET /api/portfolio/summary
  */
-router.get("/portfolio/summary", requireRole("manager", "analyst"), async (req, res) => {
+router.get("/portfolio/summary", requireRole("manager"), async (req, res) => {
   try {
     let accessibleBorrowers = borrowers;
     if (req.user.role === "analyst") {

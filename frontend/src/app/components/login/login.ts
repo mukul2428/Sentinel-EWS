@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService, User } from '../../services/auth';
+import { ApiService } from '../../services/api';
 
 @Component({
   selector: 'app-login',
@@ -12,12 +13,13 @@ import { AuthService, User } from '../../services/auth';
 export class LoginComponent {
   demoUsers: User[];
 
-  constructor(public auth: AuthService) {
+  constructor(public auth: AuthService, private api: ApiService) {
     this.demoUsers = auth.getDemoUsers();
     if (auth.isLoggedIn()) auth.logout();
   }
 
   login(user: User): void {
+    this.api.clearAllCaches();
     this.auth.login(user);
   }
 
