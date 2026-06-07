@@ -211,7 +211,7 @@ async function generateDashboardSignal(borrowerData, riskResult) {
   const parsed = extractJSON(raw);
   if (parsed?.signal && parsed?.action) return parsed;
   const lines = raw.trim().split('\n').filter(Boolean);
-  return { signal: lines[0] || raw.slice(0, 120), action: '—' };
+  return { signal: lines?.[0] || raw.slice(0, 120), action: '—' };
 }
 
 function buildDashboardSignalPrompt(borrower, risk) {
